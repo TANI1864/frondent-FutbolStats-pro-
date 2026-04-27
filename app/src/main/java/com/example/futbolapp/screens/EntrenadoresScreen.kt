@@ -2,6 +2,7 @@ package com.example.futbolapp.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,18 +14,25 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.futbolapp.model.*
+import com.example.futbolapp.NavRoutes
+import com.example.futbolapp.R
 import com.example.futbolapp.ui.theme.*
 import com.example.futbolapp.viewmodel.EntrenadorViewModel
 import com.example.futbolapp.viewmodel.EquipoViewModel
@@ -41,11 +49,13 @@ fun EntrenadoresScreen(
     val entrenadores by viewModel.entrenadores.collectAsState()
     val equipos by equipoViewModel.equipos.collectAsState()
     val cargando by viewModel.cargando.collectAsState()
+    
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     var nombre by remember { mutableStateOf("") }
     var especialidad by remember { mutableStateOf("") }
     
-    // Selector de Equipo Estilizado
     var expanded by remember { mutableStateOf(false) }
     var equipoSeleccionado by remember { mutableStateOf<Equipo?>(null) }
     
@@ -60,25 +70,23 @@ fun EntrenadoresScreen(
 
     Scaffold(
         topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(BlueVivoPrimary, BlueVivoSecondary)))
-            ) {
+            Column(modifier = Modifier.background(Brush.horizontalGradient(listOf(BlueVivoPrimary, BlueVivoSecondary)))) {
                 TopAppBar(
                     title = {
                         Column {
                             Text("Entrenadores 📋", fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 20.sp)
-                            Text("● Gestión técnica", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Text("● Gestión técnica", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        IconButton(onClick = { navController.navigate(NavRoutes.HOME) { popUpTo(NavRoutes.HOME) { inclusive = true } } }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Inicio", tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
+                // BARRA DE NAVEGACIÓN INTEGRADA
+                TopNavigationBar(navController, currentRoute)
             }
         }
     ) { padding ->
@@ -89,7 +97,7 @@ fun EntrenadoresScreen(
                 .background(Color(0xFFF8FAFC))
                 .padding(16.dp)
         ) {
-            // BOTÓN DESPLEGABLE
+            // ... resto del contenido igual ...
             Button(
                 onClick = { isFormVisible = !isFormVisible },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -112,36 +120,23 @@ fun EntrenadoresScreen(
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
                             CustomFormField(label = "NOMBRE COMPLETO", value = nombre, onValueChange = { nombre = it }, icon = Icons.Default.Person)
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             CustomFormField(label = "ESPECIALIDAD", value = especialidad, onValueChange = { especialidad = it }, icon = Icons.Default.Sports)
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             
-                            // DISEÑO TOP DEL SELECTOR
                             Text("EQUIPO ASOCIADO", fontSize = 11.sp, fontWeight = FontWeight.Black, color = BlueVivoPrimary, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
-                            ExposedDropdownMenuBox(
-                                expanded = expanded,
-                                onExpandedChange = { expanded = !expanded }
-                            ) {
+                            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                                 OutlinedTextField(
-                                    value = equipoSeleccionado?.nombre ?: "Vincular un equipo...",
+                                    value = equipoSeleccionado?.nombre ?: "Vincular a un club...",
                                     onValueChange = {},
                                     readOnly = true,
                                     leadingIcon = { Icon(Icons.Default.Groups, null, tint = BlueVivoPrimary, modifier = Modifier.size(20.dp)) },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                                     modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                                     shape = RoundedCornerShape(14.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = BlueVivoPrimary,
-                                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-                                        unfocusedContainerColor = Color(0xFFF1F5F9),
-                                        focusedContainerColor = Color.White
-                                    )
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BlueVivoPrimary, unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f), unfocusedContainerColor = Color(0xFFF1F5F9), focusedContainerColor = Color.White)
                                 )
-                                ExposedDropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false },
-                                    modifier = Modifier.background(Color.White)
-                                ) {
+                                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(Color.White)) {
                                     equipos.forEach { equipo ->
                                         DropdownMenuItem(
                                             text = {
@@ -151,27 +146,18 @@ fun EntrenadoresScreen(
                                                     Text(equipo.nombre, fontWeight = FontWeight.Bold)
                                                 }
                                             },
-                                            onClick = {
-                                                equipoSeleccionado = equipo
-                                                expanded = false
-                                            }
+                                            onClick = { equipoSeleccionado = equipo; expanded = false }
                                         )
                                     }
                                 }
                             }
                             
-                            Spacer(Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
                             Button(
                                 onClick = {
                                     if (nombre.isNotEmpty() && equipoSeleccionado != null) {
                                         scope.launch {
-                                            viewModel.crearEntrenador(
-                                                EntrenadorRequest(
-                                                    nombre = nombre,
-                                                    especialidad = especialidad,
-                                                    equipo = EquipoRef(equipoSeleccionado!!.idEquipo!!)
-                                                )
-                                            )
+                                            viewModel.crearEntrenador(EntrenadorRequest(nombre, especialidad, equipo = EquipoRef(equipoSeleccionado!!.idEquipo!!)))
                                             nombre = ""; especialidad = ""; equipoSeleccionado = null; isFormVisible = false
                                             showSuccess = true; delay(3000); showSuccess = false
                                         }
@@ -203,15 +189,9 @@ fun EntrenadoresScreen(
                     CircularProgressIndicator(color = BlueVivoPrimary)
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f).padding(top = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp)
-                ) {
+                LazyColumn(modifier = Modifier.weight(1f).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                     itemsIndexed(items = entrenadores, key = { _, e -> e.idEntrenador ?: e.hashCode() }) { _, entrenador ->
-                        val equipoNombre = entrenador.equipo?.nombre 
-                            ?: equipos.find { it.idEquipo == entrenador.idEquipo }?.nombre 
-                            ?: "Sin Equipo"
+                        val equipoNombre = entrenador.equipo?.nombre ?: equipos.find { it.idEquipo == entrenador.idEquipo }?.nombre ?: "Sin Equipo"
                         SwipeToDismissItem(onDelete = { entrenador.idEntrenador?.let { viewModel.borrarEntrenador(it) } }) {
                             EntrenadorCardFinal(entrenador, equipoNombre) {
                                 entrenador.idEntrenador?.let { viewModel.borrarEntrenador(it) }
@@ -234,7 +214,7 @@ fun EntrenadorCardFinal(entrenador: Entrenador, equipoNombre: String, onDelete: 
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(modifier = Modifier.size(48.dp).clip(CircleShape), color = BlueVivoPrimary.copy(alpha = 0.1f)) {
-                Icon(Icons.Default.Sports, null, modifier = Modifier.padding(12.dp), tint = BlueVivoPrimary)
+                Image(painter = painterResource(id = R.drawable.icono10), contentDescription = null, modifier = Modifier.padding(8.dp).fillMaxSize(), contentScale = ContentScale.Fit)
             }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {

@@ -13,6 +13,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,7 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.futbolapp.model.*
+import com.example.futbolapp.NavRoutes
 import com.example.futbolapp.ui.theme.*
 import com.example.futbolapp.viewmodel.JugadorViewModel
 import com.example.futbolapp.viewmodel.EquipoViewModel
@@ -42,11 +46,13 @@ fun JugadoresScreen(
     val equipos by equipoViewModel.equipos.collectAsState()
     val cargando by viewModel.cargando.collectAsState()
     
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     var nombre by remember { mutableStateOf("") }
     var posicion by remember { mutableStateOf("") }
     var dorsal by remember { mutableStateOf("") }
     
-    // Selector de equipo estilizado
     var expanded by remember { mutableStateOf(false) }
     var equipoSeleccionado by remember { mutableStateOf<Equipo?>(null) }
     
@@ -59,7 +65,6 @@ fun JugadoresScreen(
         viewModel.cargarJugadores()
     }
 
-    // LÓGICA DE AGRUPACIÓN POR EQUIPO
     val jugadoresAgrupados = jugadores.groupBy { jugador ->
         jugador.equipo?.nombre 
             ?: equipos.find { it.idEquipo == jugador.idEquipo }?.nombre 
@@ -68,25 +73,22 @@ fun JugadoresScreen(
 
     Scaffold(
         topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(BlueVivoPrimary, BlueVivoSecondary)))
-            ) {
+            Column(modifier = Modifier.background(Brush.horizontalGradient(listOf(BlueVivoPrimary, BlueVivoSecondary)))) {
                 TopAppBar(
                     title = {
                         Column {
                             Text("Jugadores 🏃‍♂️", fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 20.sp)
-                            Text("● Gestión de plantel", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Text("● Gestión de plantel", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        IconButton(onClick = { navController.navigate(NavRoutes.HOME) { popUpTo(NavRoutes.HOME) { inclusive = true } } }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Inicio", tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
+                TopNavigationBar(navController, currentRoute)
             }
         }
     ) { padding ->
@@ -97,7 +99,6 @@ fun JugadoresScreen(
                 .background(Color(0xFFF8FAFC))
                 .padding(16.dp)
         ) {
-            // BOTÓN PARA DESPLEGAR EL FORMULARIO
             Button(
                 onClick = { isFormVisible = !isFormVisible },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -127,12 +128,8 @@ fun JugadoresScreen(
                             }
                             Spacer(Modifier.height(12.dp))
                             
-                            // DISEÑO TOP DEL SELECTOR DE EQUIPO
                             Text("SELECCIONAR EQUIPO", fontSize = 11.sp, fontWeight = FontWeight.Black, color = BlueVivoPrimary, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
-                            ExposedDropdownMenuBox(
-                                expanded = expanded,
-                                onExpandedChange = { expanded = !expanded }
-                            ) {
+                            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                                 OutlinedTextField(
                                     value = equipoSeleccionado?.nombre ?: "Elige un equipo",
                                     onValueChange = {},
@@ -141,18 +138,9 @@ fun JugadoresScreen(
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                                     modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                                     shape = RoundedCornerShape(14.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = BlueVivoPrimary,
-                                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-                                        unfocusedContainerColor = Color(0xFFF1F5F9),
-                                        focusedContainerColor = Color.White
-                                    )
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BlueVivoPrimary, unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f), unfocusedContainerColor = Color(0xFFF1F5F9), focusedContainerColor = Color.White)
                                 )
-                                ExposedDropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false },
-                                    modifier = Modifier.background(Color.White)
-                                ) {
+                                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(Color.White)) {
                                     equipos.forEach { equipo ->
                                         DropdownMenuItem(
                                             text = {
@@ -162,10 +150,7 @@ fun JugadoresScreen(
                                                     Text(equipo.nombre, fontWeight = FontWeight.Bold)
                                                 }
                                             },
-                                            onClick = {
-                                                equipoSeleccionado = equipo
-                                                expanded = false
-                                            }
+                                            onClick = { equipoSeleccionado = equipo; expanded = false }
                                         )
                                     }
                                 }
@@ -215,7 +200,6 @@ fun JugadoresScreen(
                 ) {
                     jugadoresAgrupados.forEach { (nombreEquipo, lista) ->
                         item(key = "header_$nombreEquipo") { TeamSectionHeader(nombreEquipo) }
-                        
                         items(items = lista, key = { it.idJugador ?: it.hashCode() }) { jugador ->
                             SwipeToDismissItem(onDelete = { jugador.idJugador?.let { viewModel.borrarJugador(it) } }) {
                                 JugadorCardFinal(jugador, nombreEquipo) {

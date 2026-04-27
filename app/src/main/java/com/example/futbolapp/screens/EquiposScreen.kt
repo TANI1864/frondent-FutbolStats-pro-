@@ -22,7 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.futbolapp.model.Equipo
+import com.example.futbolapp.NavRoutes
 import com.example.futbolapp.ui.theme.*
 import com.example.futbolapp.viewmodel.EquipoViewModel
 import kotlinx.coroutines.delay
@@ -36,13 +38,15 @@ fun EquiposScreen(
 ) {
     val equipos by viewModel.equipos.collectAsState()
     val cargando by viewModel.cargando.collectAsState()
+    
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
 
     var nombre by remember { mutableStateOf("") }
     var ciudad by remember { mutableStateOf("") }
     var showSuccess by remember { mutableStateOf(false) }
     
     var isFormVisible by remember { mutableStateOf(false) }
-    
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -51,25 +55,23 @@ fun EquiposScreen(
 
     Scaffold(
         topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(BlueVivoPrimary, BlueVivoSecondary)))
-            ) {
+            Column(modifier = Modifier.background(Brush.horizontalGradient(listOf(BlueVivoPrimary, BlueVivoSecondary)))) {
                 TopAppBar(
                     title = {
                         Column {
                             Text("Equipos 🛡️", fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 20.sp)
-                            Text("● Gestión de clubes", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Text("● Gestión de clubes", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        IconButton(onClick = { navController.navigate(NavRoutes.HOME) { popUpTo(NavRoutes.HOME) { inclusive = true } } }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Inicio", tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
+                // BARRA DE NAVEGACIÓN INTEGRADA
+                TopNavigationBar(navController, currentRoute)
             }
         }
     ) { padding ->
@@ -91,18 +93,11 @@ fun EquiposScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(if (isFormVisible) Icons.Default.Remove else Icons.Default.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (isFormVisible) "CERRAR FORMULARIO" else "REGISTRAR NUEVO EQUIPO",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(if (isFormVisible) "CERRAR FORMULARIO" else "REGISTRAR NUEVO EQUIPO", fontWeight = FontWeight.Bold)
                 }
             }
 
-            AnimatedVisibility(
-                visible = isFormVisible,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
+            AnimatedVisibility(visible = isFormVisible) {
                 Column {
                     Spacer(modifier = Modifier.height(16.dp))
                     ElevatedCard(
@@ -115,9 +110,7 @@ fun EquiposScreen(
                             CustomFormField(label = "NOMBRE DEL EQUIPO", value = nombre, onValueChange = { nombre = it }, icon = Icons.Default.Groups)
                             Spacer(modifier = Modifier.height(12.dp))
                             CustomFormField(label = "CIUDAD", value = ciudad, onValueChange = { ciudad = it }, icon = Icons.Default.LocationOn)
-                            
                             Spacer(modifier = Modifier.height(20.dp))
-                            
                             Button(
                                 onClick = {
                                     if (nombre.isNotEmpty() && ciudad.isNotEmpty()) {
@@ -125,9 +118,7 @@ fun EquiposScreen(
                                             viewModel.crearEquipo(Equipo(idEquipo = null, nombre = nombre, ciudad = ciudad))
                                             delay(800)
                                             nombre = ""; ciudad = ""; isFormVisible = false
-                                            showSuccess = true
-                                            delay(3000)
-                                            showSuccess = false
+                                            showSuccess = true; delay(3000); showSuccess = false
                                         }
                                     }
                                 },
@@ -161,9 +152,9 @@ fun EquiposScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (cargando && equipos.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = BlueVivoPrimary) }
+                Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = BlueVivoPrimary) }
             } else {
-                LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyColumn(modifier = Modifier.weight(1f).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     itemsIndexed(items = equipos, key = { _, equipo -> equipo.idEquipo ?: equipo.hashCode() }) { _, equipo ->
                         EquipoCardReal(equipo = equipo, onDelete = { equipo.idEquipo?.let { viewModel.borrarEquipo(it) } })
                     }
@@ -192,7 +183,6 @@ fun EquipoCardReal(equipo: Equipo, onDelete: () -> Unit) {
                     Text(text = equipo.ciudad, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
-            // BOTÓN DE BORRADO DIRECTO SIN AVISOS
             IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(26.dp)) }
         }
     }

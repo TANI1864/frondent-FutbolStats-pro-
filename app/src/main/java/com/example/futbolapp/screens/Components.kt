@@ -5,18 +5,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.futbolapp.NavRoutes
 import com.example.futbolapp.ui.theme.BlueVivoPrimary
+import com.example.futbolapp.ui.theme.BlueVivoSecondary
 
 @Composable
 fun CustomFormField(
@@ -66,7 +71,7 @@ fun SwipeToDismissItem(
                 true
             } else false
         },
-        positionalThreshold = { it * 0.6f } // Umbral del 60% para mayor seguridad
+        positionalThreshold = { it * 0.6f }
     )
 
     SwipeToDismissBox(
@@ -95,5 +100,54 @@ fun SwipeToDismissItem(
         }
     ) {
         content()
+    }
+}
+
+// NUEVA BARRA DE NAVEGACIÓN SUPERIOR TIPO TABS
+@Composable
+fun TopNavigationBar(navController: NavController, currentRoute: String?) {
+    val items = listOf(
+        Triple("EQUIPOS", NavRoutes.EQUIPOS, Icons.Default.Groups),
+        Triple("JUGADORES", NavRoutes.JUGADORES, Icons.Default.Person),
+        Triple("TÉCNICOS", NavRoutes.ENTRENADORES, Icons.Default.Sports),
+        Triple("PARTIDOS", NavRoutes.PARTIDOS, Icons.Default.SportsSoccer)
+    )
+
+    ScrollableTabRow(
+        selectedTabIndex = items.indexOfFirst { it.second == currentRoute }.coerceAtLeast(0),
+        containerColor = Color.Transparent,
+        contentColor = Color.White,
+        edgePadding = 16.dp,
+        indicator = { tabPositions ->
+            TabRowDefaults.SecondaryIndicator(
+                Modifier.tabIndicatorOffset(tabPositions[items.indexOfFirst { it.second == currentRoute }.coerceAtLeast(0)]),
+                color = Color.White,
+                height = 3.dp
+            )
+        },
+        divider = {}
+    ) {
+        items.forEach { (label, route, icon) ->
+            Tab(
+                selected = currentRoute == route,
+                onClick = {
+                    if (currentRoute != route) {
+                        navController.navigate(route) {
+                            popUpTo(NavRoutes.HOME) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                text = {
+                    Text(
+                        text = label,
+                        fontSize = 11.sp,
+                        fontWeight = if (currentRoute == route) FontWeight.Black else FontWeight.Bold
+                    )
+                },
+                icon = { Icon(icon, null, modifier = Modifier.size(18.dp)) }
+            )
+        }
     }
 }
