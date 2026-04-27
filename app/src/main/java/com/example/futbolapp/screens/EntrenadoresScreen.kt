@@ -6,7 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,12 +53,13 @@ fun EntrenadoresScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // ESTADO PARA EL BUSCADOR
+    var searchQuery by remember { mutableStateOf("") }
+
     var nombre by remember { mutableStateOf("") }
     var especialidad by remember { mutableStateOf("") }
-    
     var expanded by remember { mutableStateOf(false) }
     var equipoSeleccionado by remember { mutableStateOf<Equipo?>(null) }
-    
     var isFormVisible by remember { mutableStateOf(false) }
     var showSuccess by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -66,6 +67,17 @@ fun EntrenadoresScreen(
     LaunchedEffect(Unit) {
         equipoViewModel.cargarEquipos()
         viewModel.cargarEntrenadores()
+    }
+
+    // LÓGICA DE FILTRADO Y AGRUPACIÓN
+    val filteredEntrenadores = entrenadores.filter { 
+        it.nombre.contains(searchQuery, ignoreCase = true)
+    }
+    
+    val entrenadoresAgrupados = filteredEntrenadores.groupBy { entrenador ->
+        entrenador.equipo?.nombre 
+            ?: equipos.find { it.idEquipo == entrenador.idEquipo }?.nombre 
+            ?: "Sin Equipo"
     }
 
     Scaffold(
@@ -85,7 +97,6 @@ fun EntrenadoresScreen(
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
-                // BARRA DE NAVEGACIÓN INTEGRADA
                 TopNavigationBar(navController, currentRoute)
             }
         }
@@ -97,7 +108,6 @@ fun EntrenadoresScreen(
                 .background(Color(0xFFF8FAFC))
                 .padding(16.dp)
         ) {
-            // ... resto del contenido igual ...
             Button(
                 onClick = { isFormVisible = !isFormVisible },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -106,7 +116,7 @@ fun EntrenadoresScreen(
             ) {
                 Icon(if (isFormVisible) Icons.Default.ExpandLess else Icons.Default.Add, null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (isFormVisible) "CERRAR FORMULARIO" else "REGISTRAR ENTRENADOR", fontWeight = FontWeight.Bold)
+                Text(if (isFormVisible) "CERRAR FORMULARIO" else "CONTRATAR ENTRENADOR", fontWeight = FontWeight.Bold)
             }
 
             AnimatedVisibility(visible = isFormVisible) {
@@ -127,7 +137,7 @@ fun EntrenadoresScreen(
                             Text("EQUIPO ASOCIADO", fontSize = 11.sp, fontWeight = FontWeight.Black, color = BlueVivoPrimary, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
                             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                                 OutlinedTextField(
-                                    value = equipoSeleccionado?.nombre ?: "Vincular a un club...",
+                                    value = equipoSeleccionado?.nombre ?: "Vincular un club...",
                                     onValueChange = {},
                                     readOnly = true,
                                     leadingIcon = { Icon(Icons.Default.Groups, null, tint = BlueVivoPrimary, modifier = Modifier.size(20.dp)) },
@@ -167,7 +177,7 @@ fun EntrenadoresScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = BlueVivoPrimary),
                                 shape = RoundedCornerShape(16.dp)
                             ) {
-                                Text("REGISTRAR ENTRENADOR", color = Color.White, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                                Text("FINALIZAR CONTRATACIÓN", color = Color.White, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                             }
                         }
                     }
@@ -182,19 +192,34 @@ fun EntrenadoresScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-            Text("Cuerpo Técnico", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = Color.DarkGray)
+
+            // BARRA DE BÚSQUEDA AGREGADA
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                placeholder = { Text("Buscar por nombre...", color = Color.Gray) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = BlueVivoPrimary) },
+                shape = RoundedCornerShape(16.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.White, focusedContainerColor = Color.White, unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f), focusedBorderColor = BlueVivoPrimary)
+            )
+
+            Text("Cuerpo Técnico Actual", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = Color.DarkGray)
             
             if (cargando && entrenadores.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = BlueVivoPrimary)
                 }
             } else {
-                LazyColumn(modifier = Modifier.weight(1f).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-                    itemsIndexed(items = entrenadores, key = { _, e -> e.idEntrenador ?: e.hashCode() }) { _, entrenador ->
-                        val equipoNombre = entrenador.equipo?.nombre ?: equipos.find { it.idEquipo == entrenador.idEquipo }?.nombre ?: "Sin Equipo"
-                        SwipeToDismissItem(onDelete = { entrenador.idEntrenador?.let { viewModel.borrarEntrenador(it) } }) {
-                            EntrenadorCardFinal(entrenador, equipoNombre) {
-                                entrenador.idEntrenador?.let { viewModel.borrarEntrenador(it) }
+                LazyColumn(modifier = Modifier.weight(1f).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+                    entrenadoresAgrupados.forEach { (nombreEquipo, lista) ->
+                        item(key = "header_$nombreEquipo") { TeamSectionHeader(nombreEquipo) }
+                        items(items = lista, key = { it.idEntrenador ?: it.hashCode() }) { entrenador ->
+                            SwipeToDismissItem(onDelete = { entrenador.idEntrenador?.let { viewModel.borrarEntrenador(it) } }) {
+                                EntrenadorCardFinal(entrenador, nombreEquipo) {
+                                    entrenador.idEntrenador?.let { viewModel.borrarEntrenador(it) }
+                                }
                             }
                         }
                     }

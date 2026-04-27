@@ -49,13 +49,14 @@ fun JugadoresScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // ESTADO PARA EL BUSCADOR
+    var searchQuery by remember { mutableStateOf("") }
+
     var nombre by remember { mutableStateOf("") }
     var posicion by remember { mutableStateOf("") }
     var dorsal by remember { mutableStateOf("") }
-    
     var expanded by remember { mutableStateOf(false) }
     var equipoSeleccionado by remember { mutableStateOf<Equipo?>(null) }
-    
     var isFormVisible by remember { mutableStateOf(false) }
     var showSuccess by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -65,7 +66,12 @@ fun JugadoresScreen(
         viewModel.cargarJugadores()
     }
 
-    val jugadoresAgrupados = jugadores.groupBy { jugador ->
+    // LÓGICA DE FILTRADO
+    val filteredJugadores = jugadores.filter { 
+        it.nombre.contains(searchQuery, ignoreCase = true)
+    }
+    
+    val jugadoresAgrupados = filteredJugadores.groupBy { jugador ->
         jugador.equipo?.nombre 
             ?: equipos.find { it.idEquipo == jugador.idEquipo }?.nombre 
             ?: "Sin Equipo"
@@ -99,6 +105,7 @@ fun JugadoresScreen(
                 .background(Color(0xFFF8FAFC))
                 .padding(16.dp)
         ) {
+            // BOTÓN REGISTRO
             Button(
                 onClick = { isFormVisible = !isFormVisible },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -142,16 +149,7 @@ fun JugadoresScreen(
                                 )
                                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(Color.White)) {
                                     equipos.forEach { equipo ->
-                                        DropdownMenuItem(
-                                            text = {
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    Icon(Icons.Default.Shield, null, modifier = Modifier.size(20.dp), tint = BlueVivoPrimary)
-                                                    Spacer(Modifier.width(12.dp))
-                                                    Text(equipo.nombre, fontWeight = FontWeight.Bold)
-                                                }
-                                            },
-                                            onClick = { equipoSeleccionado = equipo; expanded = false }
-                                        )
+                                        DropdownMenuItem(text = { Text(equipo.nombre, fontWeight = FontWeight.Bold) }, onClick = { equipoSeleccionado = equipo; expanded = false })
                                     }
                                 }
                             }
@@ -186,6 +184,25 @@ fun JugadoresScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+            
+            // BARRA DE BÚSQUEDA (VISIBLE AQUÍ)
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                placeholder = { Text("Buscar por nombre...", color = Color.Gray) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = BlueVivoPrimary) },
+                trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Close, null) } },
+                shape = RoundedCornerShape(16.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = Color.White,
+                    focusedContainerColor = Color.White,
+                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
+                    focusedBorderColor = BlueVivoPrimary
+                )
+            )
+
             Text("Plantilla Actual", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = Color.DarkGray)
             
             if (cargando && jugadores.isEmpty()) {
@@ -195,12 +212,12 @@ fun JugadoresScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f).padding(top = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
                     jugadoresAgrupados.forEach { (nombreEquipo, lista) ->
                         item(key = "header_$nombreEquipo") { TeamSectionHeader(nombreEquipo) }
-                        items(items = lista, key = { it.idJugador ?: it.hashCode() }) { jugador ->
+                        items(items = lista, key = { j -> j.idJugador ?: j.hashCode() }) { jugador ->
                             SwipeToDismissItem(onDelete = { jugador.idJugador?.let { viewModel.borrarJugador(it) } }) {
                                 JugadorCardFinal(jugador, nombreEquipo) {
                                     jugador.idJugador?.let { viewModel.borrarJugador(it) }
