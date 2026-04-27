@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,6 +46,7 @@ fun JugadoresScreen(
     var posicion by remember { mutableStateOf("") }
     var dorsal by remember { mutableStateOf("") }
     
+    // Selector de equipo estilizado
     var expanded by remember { mutableStateOf(false) }
     var equipoSeleccionado by remember { mutableStateOf<Equipo?>(null) }
     
@@ -57,7 +59,7 @@ fun JugadoresScreen(
         viewModel.cargarJugadores()
     }
 
-    // LÓGICA DE AGRUPACIÓN MEJORADA
+    // LÓGICA DE AGRUPACIÓN POR EQUIPO
     val jugadoresAgrupados = jugadores.groupBy { jugador ->
         jugador.equipo?.nombre 
             ?: equipos.find { it.idEquipo == jugador.idEquipo }?.nombre 
@@ -95,6 +97,7 @@ fun JugadoresScreen(
                 .background(Color(0xFFF8FAFC))
                 .padding(16.dp)
         ) {
+            // BOTÓN PARA DESPLEGAR EL FORMULARIO
             Button(
                 onClick = { isFormVisible = !isFormVisible },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -124,26 +127,51 @@ fun JugadoresScreen(
                             }
                             Spacer(Modifier.height(12.dp))
                             
-                            Text("EQUIPO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = BlueVivoPrimary, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
-                            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+                            // DISEÑO TOP DEL SELECTOR DE EQUIPO
+                            Text("SELECCIONAR EQUIPO", fontSize = 11.sp, fontWeight = FontWeight.Black, color = BlueVivoPrimary, modifier = Modifier.padding(start = 4.dp, bottom = 4.dp))
+                            ExposedDropdownMenuBox(
+                                expanded = expanded,
+                                onExpandedChange = { expanded = !expanded }
+                            ) {
                                 OutlinedTextField(
-                                    value = equipoSeleccionado?.nombre ?: "Seleccionar equipo",
+                                    value = equipoSeleccionado?.nombre ?: "Elige un equipo",
                                     onValueChange = {},
                                     readOnly = true,
-                                    leadingIcon = { Icon(Icons.Default.Groups, null, tint = Color.Gray) },
+                                    leadingIcon = { Icon(Icons.Default.Groups, null, tint = BlueVivoPrimary, modifier = Modifier.size(20.dp)) },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                                     modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BlueVivoPrimary, unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f), unfocusedContainerColor = Color.White, focusedContainerColor = Color.White)
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = BlueVivoPrimary,
+                                        unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
+                                        unfocusedContainerColor = Color(0xFFF1F5F9),
+                                        focusedContainerColor = Color.White
+                                    )
                                 )
-                                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                ExposedDropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false },
+                                    modifier = Modifier.background(Color.White)
+                                ) {
                                     equipos.forEach { equipo ->
-                                        DropdownMenuItem(text = { Text(equipo.nombre) }, onClick = { equipoSeleccionado = equipo; expanded = false })
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(Icons.Default.Shield, null, modifier = Modifier.size(20.dp), tint = BlueVivoPrimary)
+                                                    Spacer(Modifier.width(12.dp))
+                                                    Text(equipo.nombre, fontWeight = FontWeight.Bold)
+                                                }
+                                            },
+                                            onClick = {
+                                                equipoSeleccionado = equipo
+                                                expanded = false
+                                            }
+                                        )
                                     }
                                 }
                             }
                             
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(Modifier.height(24.dp))
                             Button(
                                 onClick = {
                                     if (nombre.isNotEmpty() && equipoSeleccionado != null) {
@@ -168,7 +196,7 @@ fun JugadoresScreen(
             AnimatedVisibility(visible = showSuccess) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Surface(color = Color(0xFF4CAF50), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    Text("¡Jugador registrado!", color = Color.White, modifier = Modifier.padding(12.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold)
+                    Text("¡Jugador registrado!", color = Color.White, modifier = Modifier.padding(12.dp), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -186,9 +214,8 @@ fun JugadoresScreen(
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
                     jugadoresAgrupados.forEach { (nombreEquipo, lista) ->
-                        item { TeamSectionHeader(nombreEquipo) }
+                        item(key = "header_$nombreEquipo") { TeamSectionHeader(nombreEquipo) }
                         
-                        // USO DE KEY PARA BORRADO SEGURO
                         items(items = lista, key = { it.idJugador ?: it.hashCode() }) { jugador ->
                             SwipeToDismissItem(onDelete = { jugador.idJugador?.let { viewModel.borrarJugador(it) } }) {
                                 JugadorCardFinal(jugador, nombreEquipo) {
@@ -232,11 +259,10 @@ fun JugadorCardFinal(jugador: Jugador, equipoNombre: String, onDelete: () -> Uni
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = jugador.nombre, style = MaterialTheme.typography.titleMedium, color = Color.Black, fontWeight = FontWeight.Bold)
-                Text(text = "$equipoNombre • ${jugador.posicion}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Text(text = "$equipoNombre • ${jugador.posicion} • #${jugador.dorsal}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
-            // BOTÓN ROJO IGUAL AL DE PARTIDOS
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(26.dp))
+                Icon(Icons.Default.Delete, null, tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(24.dp))
             }
         }
     }

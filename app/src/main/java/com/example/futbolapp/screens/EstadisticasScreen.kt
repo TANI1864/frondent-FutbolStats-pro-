@@ -191,7 +191,7 @@ fun EstadisticasScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E3A8A)),
                                 shape = RoundedCornerShape(16.dp)
                             ) {
-                                Text("GUARDAR EN RENDER", fontWeight = FontWeight.ExtraBold)
+                                Text("GUARDAR ESTADISTICA", fontWeight = FontWeight.ExtraBold)
                             }
                         }
                     }
